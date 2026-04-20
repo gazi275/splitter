@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, forwardRef } from 'react';
-import { PanelProps } from '../types/panel';
+import { PanelProps } from '../../types/panel';
 import {
   panelLeafStyle,
   panelSplitContainerStyle,
@@ -7,9 +7,8 @@ import {
   dividerStyle,
   panelControlsContainerStyle,
   panelControlButtonStyle,
-  COLORS,
 } from '../../styles/componentStyles';
-import { UI_CONSTANTS } from '../../constants/colors';
+import { COLORS, UI_CONSTANTS } from '../../constants/colors';
 
 /**
  * Panel Control Button Component
