@@ -51,45 +51,34 @@ export const usePanelTree = (initialRoot: PanelNode) => {
 
   const handleRemove = useCallback((nodeId: number) => {
     setRoot((prevRoot) => {
-      const removeNode = (node: PanelNode, id: number): { node: PanelNode; removed: boolean; replacement?: PanelNode } => {
-        if (node.type === 'split') {
-          const leftResult = removeNode(node.children[0], id);
-          const rightResult = removeNode(node.children[1], id);
-
-          if (leftResult.removed) {
-            return {
-              ...rightResult,
-              removed: true,
-              replacement: node.children[1],
-            };
-          }
-
-          if (rightResult.removed) {
-            return {
-              ...leftResult,
-              removed: true,
-              replacement: node.children[0],
-            };
-          }
-
-          return {
-            node: {
-              ...node,
-              children: [leftResult.node, rightResult.node],
-            },
-            removed: false,
-          };
+      const removeNode = (node: PanelNode, id: number): PanelNode | null => {
+        if (node.type === 'leaf') {
+          return node.id === id ? null : node;
         }
 
-        if (node.id === id) {
-          return { removed: true, node };
+        const leftResult = removeNode(node.children[0], id);
+        const rightResult = removeNode(node.children[1], id);
+
+        if (leftResult === node.children[0] && rightResult === node.children[1]) {
+          return node;
         }
 
-        return { node, removed: false };
+        if (leftResult === null) {
+          return rightResult;
+        }
+
+        if (rightResult === null) {
+          return leftResult;
+        }
+
+        return {
+          ...node,
+          children: [leftResult, rightResult],
+        };
       };
 
       const result = removeNode(prevRoot, nodeId);
-      return result.replacement || result.node;
+      return result ?? prevRoot;
     });
   }, []);
 
