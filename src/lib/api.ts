@@ -79,7 +79,7 @@ export type VerifyOtpPayload = {
 };
 
 export const register = (payload: RegisterPayload) =>
-  apiRequest<RegisterResult>(
+  apiRequest<LoginResult>(
     '/users/register',
     {
       method: 'POST',
@@ -94,6 +94,13 @@ export const verifyOtp = (payload: VerifyOtpPayload) =>
       method: 'POST',
       body: JSON.stringify(payload),
     }
+  );
+
+export const logout = (token: string) =>
+  apiRequest<null>(
+    '/auth/logout',
+    { method: 'POST' },
+    token
   );
 
 export const login = (payload: LoginPayload) =>
