@@ -31,6 +31,8 @@ export const panelLeafStyle: CSSProperties = {
   justifyContent: 'center',
   position: 'relative',
   overflow: 'hidden',
+  boxSizing: 'border-box',
+  border: '1px solid rgba(255, 255, 255, 0.85)',
   cursor: 'default',
 };
 
@@ -55,6 +57,7 @@ export const dividerStyle = (isVertical: boolean, isDragging: boolean): CSSPrope
   cursor: isVertical ? 'col-resize' : 'row-resize',
   userSelect: 'none',
   flexShrink: 0,
+  boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.8)',
   transition: isDragging ? 'none' : `background-color ${UI_CONSTANTS.TRANSITION_DURATION}`,
   zIndex: Z_INDEX.DIVIDER,
 });

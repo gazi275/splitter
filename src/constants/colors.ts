@@ -48,6 +48,6 @@ export const COLORS = {
   BUTTON_BG: 'rgba(100, 100, 100, 0.6)',
   BUTTON_BG_HOVER: 'rgba(80, 80, 80, 0.8)',
   BUTTON_TEXT: '#ffffff',
-  DIVIDER: '#999',
-  DIVIDER_HOVER: '#666',
+  DIVIDER: '#ffffff',
+  DIVIDER_HOVER: '#f2f2f2',
 } as const;
