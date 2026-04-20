@@ -33,3 +33,16 @@ export const updateNodeById = (
   }
   return node;
 };
+
+/**
+ * Returns the maximum node id from a panel tree.
+ */
+export const getMaxNodeId = (node: PanelNode): number => {
+  if (node.type === 'leaf') {
+    return node.id;
+  }
+
+  const leftMax = getMaxNodeId(node.children[0]);
+  const rightMax = getMaxNodeId(node.children[1]);
+  return Math.max(node.id, leftMax, rightMax);
+};

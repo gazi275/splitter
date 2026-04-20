@@ -39,6 +39,10 @@ export const generateNodeId = (): number => {
   return nodeIdCounter++;
 };
 
+export const setNodeIdCounter = (value: number): void => {
+  nodeIdCounter = Math.max(0, Math.floor(value));
+};
+
 export const resetNodeIdCounter = (): void => {
   nodeIdCounter = 0;
 };

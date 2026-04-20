@@ -1,14 +1,23 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Panel } from '../Panel';
 import { usePanelTree } from '../../hooks/usePanelTree';
 import { generateNodeId, getRandomColor } from '../../utils/colorUtils';
 import { rootStyle } from '../../styles/componentStyles';
+import { PanelNode } from '../../types/panel';
+
+interface PanelSplitterProps {
+  initialLayout?: PanelNode;
+  onLayoutChange?: (layout: PanelNode) => void;
+}
 
 /**
  * PanelSplitter - Main app component
  * Manages the recursive panel tree and renders the UI
  */
-export const PanelSplitter: React.FC = () => {
+export const PanelSplitter: React.FC<PanelSplitterProps> = ({
+  initialLayout,
+  onLayoutChange,
+}) => {
   const initialRoot = useMemo(
     () => ({
       id: generateNodeId(),
@@ -18,7 +27,17 @@ export const PanelSplitter: React.FC = () => {
     []
   );
 
-  const { root, handleSplit, handleRemove } = usePanelTree(initialRoot);
+  const { root, setRoot, handleSplit, handleRemove } = usePanelTree(initialRoot);
+
+  useEffect(() => {
+    if (initialLayout) {
+      setRoot(initialLayout);
+    }
+  }, [initialLayout, setRoot]);
+
+  useEffect(() => {
+    onLayoutChange?.(root);
+  }, [onLayoutChange, root]);
 
   return (
     <div style={rootStyle}>

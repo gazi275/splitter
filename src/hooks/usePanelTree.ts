@@ -1,13 +1,22 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { PanelNode, SplitDirection } from '../types/panel';
-import { generateNodeId, getDistinctColorPair } from '../utils/colorUtils';
-import { updateNodeById } from '../utils/treeUtils';
+import {
+  generateNodeId,
+  getDistinctColorPair,
+  setNodeIdCounter,
+} from '../utils/colorUtils';
+import { getMaxNodeId, updateNodeById } from '../utils/treeUtils';
 
 /**
  * Custom hook for managing panel tree operations
  */
 export const usePanelTree = (initialRoot: PanelNode) => {
   const [root, setRoot] = useState<PanelNode>(initialRoot);
+
+  useEffect(() => {
+    setRoot(initialRoot);
+    setNodeIdCounter(getMaxNodeId(initialRoot) + 1);
+  }, [initialRoot]);
 
   const handleSplit = useCallback(
     (nodeId: number, direction: SplitDirection | 'resize', newSizes?: [number, number]) => {
@@ -84,5 +93,5 @@ export const usePanelTree = (initialRoot: PanelNode) => {
     });
   }, []);
 
-  return { root, handleSplit, handleRemove };
+  return { root, setRoot, handleSplit, handleRemove };
 };

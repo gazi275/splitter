@@ -1,7 +1,7 @@
 import { CSSProperties } from 'react';
 import { UI_CONSTANTS, COLORS, Z_INDEX } from '../constants/colors';
 
-export const panelControlButtonStyle = (hovering: boolean): CSSProperties => ({
+export const panelControlButtonStyle = (): CSSProperties => ({
   width: `${UI_CONSTANTS.BUTTON_SIZE}px`,
   height: `${UI_CONSTANTS.BUTTON_SIZE}px`,
   fontSize: '20px',
@@ -84,10 +84,10 @@ export const dividerLabelStyle: CSSProperties = {
 export const rootStyle: CSSProperties = {
   width: '100%',
   height: '100%',
-  minHeight: '100vh',
+  minHeight: 0,
   margin: 0,
   padding: 0,
-  fontFamily: 'system-ui, -apple-system, sans-serif',
+  fontFamily: '"Space Grotesk", "Manrope", sans-serif',
   overflow: 'hidden',
   display: 'flex',
 };

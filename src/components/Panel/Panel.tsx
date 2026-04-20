@@ -22,7 +22,7 @@ const PanelControlButton: React.FC<{
   <button
     onClick={onClick}
     title={title}
-    style={panelControlButtonStyle(false)}
+    style={panelControlButtonStyle()}
     onMouseEnter={(e) => {
       const target = e.currentTarget as HTMLButtonElement;
       target.style.backgroundColor = COLORS.BUTTON_BG_HOVER;
