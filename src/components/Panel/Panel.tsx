@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, forwardRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PanelProps } from '../../types/panel';
 import {
   panelLeafStyle,
@@ -38,45 +38,29 @@ const PanelControlButton: React.FC<{
 /**
  * Divider Component for resizable split
  */
-const Divider = forwardRef<HTMLDivElement, {
+const Divider: React.FC<{
   isVertical: boolean;
   onDragStart: (e: React.MouseEvent<HTMLDivElement>) => void;
   isDragging: boolean;
-}>(({ isVertical, onDragStart, isDragging }, ref) => {
-  const dividerRef = useRef<HTMLDivElement>(null);
+}> = ({ isVertical, onDragStart, isDragging }) => {
 
-  const setRefs = (element: HTMLDivElement | null) => {
-    dividerRef.current = element;
-
-    if (typeof ref === 'function') {
-      ref(element);
-    } else if (ref) {
-      ref.current = element;
-    }
+  const handleMouseEnter = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.currentTarget.style.backgroundColor = COLORS.DIVIDER_HOVER;
   };
 
-  const handleMouseEnter = () => {
-    if (!isDragging && dividerRef.current) {
-      dividerRef.current.style.backgroundColor = COLORS.DIVIDER_HOVER;
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (!isDragging && dividerRef.current) {
-      dividerRef.current.style.backgroundColor = COLORS.DIVIDER;
-    }
+  const handleMouseLeave = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.currentTarget.style.backgroundColor = COLORS.DIVIDER;
   };
 
   return (
     <div
-      ref={setRefs}
       onMouseDown={onDragStart}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={dividerStyle(isVertical, isDragging)}
     />
   );
-});
+};
 
 /**
  * Panel Component - Handles both leaf and split nodes
@@ -84,6 +68,50 @@ const Divider = forwardRef<HTMLDivElement, {
 export const Panel: React.FC<PanelProps> = ({ node, onSplit, onRemove, isRoot }) => {
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const isSplitNode = node.type === 'split';
+  const isVertical = isSplitNode ? node.direction === 'v' : false;
+
+  const handleDragEnd = () => {
+    setDragging(false);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!dragging || !isSplitNode) return;
+
+    const container = document.querySelector(`[data-panel-id="${node.id}"]`);
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+
+    if (isVertical) {
+      const newPos = ((e.clientX - rect.left) / rect.width) * 100;
+      const newSize1 = Math.max(
+        UI_CONSTANTS.MIN_PANEL_SIZE,
+        Math.min(UI_CONSTANTS.MAX_PANEL_SIZE, newPos)
+      );
+      const newSize2 = 100 - newSize1;
+      onSplit(node.id, 'resize', [newSize1, newSize2]);
+    } else {
+      const newPos = ((e.clientY - rect.top) / rect.height) * 100;
+      const newSize1 = Math.max(
+        UI_CONSTANTS.MIN_PANEL_SIZE,
+        Math.min(UI_CONSTANTS.MAX_PANEL_SIZE, newPos)
+      );
+      const newSize2 = 100 - newSize1;
+      onSplit(node.id, 'resize', [newSize1, newSize2]);
+    }
+  };
+
+  useEffect(() => {
+    if (!dragging || !isSplitNode) return;
+
+    window.addEventListener('mousemove', handleMouseMove as any);
+    window.addEventListener('mouseup', handleDragEnd);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove as any);
+      window.removeEventListener('mouseup', handleDragEnd);
+    };
+  }, [dragging, isSplitNode, isVertical, node.id, onSplit]);
 
   if (node.type === 'leaf') {
     return (
@@ -121,54 +149,11 @@ export const Panel: React.FC<PanelProps> = ({ node, onSplit, onRemove, isRoot })
 
   // Split node
   if (node.type === 'split') {
-    const isVertical = node.direction === 'v';
     const [size1, size2] = node.sizes;
 
-    const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    const handleDragStart = () => {
       setDragging(true);
     };
-
-    const handleDragEnd = () => {
-      setDragging(false);
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!dragging) return;
-
-      const container = document.querySelector(`[data-panel-id="${node.id}"]`)?.parentElement;
-      if (!container) return;
-
-      const rect = container.getBoundingClientRect();
-
-      if (isVertical) {
-        const newPos = ((e.clientX - rect.left) / rect.width) * 100;
-        const newSize1 = Math.max(
-          UI_CONSTANTS.MIN_PANEL_SIZE,
-          Math.min(UI_CONSTANTS.MAX_PANEL_SIZE, newPos)
-        );
-        const newSize2 = 100 - newSize1;
-        onSplit(node.id, 'resize', [newSize1, newSize2]);
-      } else {
-        const newPos = ((e.clientY - rect.top) / rect.height) * 100;
-        const newSize1 = Math.max(
-          UI_CONSTANTS.MIN_PANEL_SIZE,
-          Math.min(UI_CONSTANTS.MAX_PANEL_SIZE, newPos)
-        );
-        const newSize2 = 100 - newSize1;
-        onSplit(node.id, 'resize', [newSize1, newSize2]);
-      }
-    };
-
-    useEffect(() => {
-      if (dragging) {
-        window.addEventListener('mousemove', handleMouseMove as any);
-        window.addEventListener('mouseup', handleDragEnd);
-        return () => {
-          window.removeEventListener('mousemove', handleMouseMove as any);
-          window.removeEventListener('mouseup', handleDragEnd);
-        };
-      }
-    }, [dragging]);
 
     return (
       <div style={panelSplitContainerStyle(isVertical)} data-panel-id={node.id}>
@@ -178,12 +163,7 @@ export const Panel: React.FC<PanelProps> = ({ node, onSplit, onRemove, isRoot })
         </div>
 
         {/* Divider */}
-        <Divider
-          ref={dividerRef}
-          isVertical={isVertical}
-          onDragStart={handleDragStart}
-          isDragging={dragging}
-        />
+        <Divider isVertical={isVertical} onDragStart={handleDragStart} isDragging={dragging} />
 
         {/* Second Child */}
         <div style={panelChildStyle(size2)}>
