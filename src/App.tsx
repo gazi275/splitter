@@ -1,10 +1,20 @@
 import React, { FormEvent, useCallback, useEffect, useState } from 'react';
 import { PanelSplitter } from './components/PanelSplitter';
-import { getMyLayout, getMyProfile, login, saveMyLayout } from './lib/api';
+import {
+  getMyLayout,
+  getMyProfile,
+  login,
+  register,
+  saveMyLayout,
+  verifyOtp,
+} from './lib/api';
 import { PanelNode } from './types/panel';
 import { AuthState } from './types/auth';
 
 const TOKEN_STORAGE_KEY = 'split.auth.token';
+const REGISTER_EMAIL_STORAGE_KEY = 'split.register.email';
+
+type AuthMode = 'login' | 'register' | 'verify-otp';
 
 const appShellStyle: React.CSSProperties = {
   minHeight: '100vh',
@@ -115,8 +125,22 @@ const App: React.FC = () => {
     email: null,
     name: null,
   });
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
+  
+  // Login fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  // Register fields
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  
+  // OTP verification
+  const [otp, setOtp] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
+  
   const [message, setMessage] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [savedLayout, setSavedLayout] = useState<PanelNode | null>(null);
@@ -189,6 +213,74 @@ const App: React.FC = () => {
     }
   };
 
+  const onSubmitRegister = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage(null);
+    setIsBusy(true);
+
+    try {
+      if (regPassword !== regConfirmPassword) {
+        throw new Error('Passwords do not match');
+      }
+
+      if (regPassword.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
+
+      await register({
+        name: regName,
+        email: regEmail,
+        password: regPassword,
+      });
+
+      // Move to OTP verification
+      localStorage.setItem(REGISTER_EMAIL_STORAGE_KEY, regEmail);
+      setOtpEmail(regEmail);
+      setAuthMode('verify-otp');
+      setMessage('OTP sent to your email. Please verify.');
+      
+      // Clear register fields
+      setRegName('');
+      setRegEmail('');
+      setRegPassword('');
+      setRegConfirmPassword('');
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : 'Registration failed. Please try again.'
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const onSubmitVerifyOtp = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage(null);
+    setIsBusy(true);
+
+    try {
+      if (!otp.trim()) {
+        throw new Error('Please enter OTP');
+      }
+
+      const result = await verifyOtp({
+        email: otpEmail,
+        otp,
+      });
+
+      localStorage.setItem(TOKEN_STORAGE_KEY, result.token);
+      await hydrateSession(result.token);
+      setOtp('');
+      setAuthMode('login');
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : 'OTP verification failed. Please try again.'
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
   const handleLayoutChange = useCallback(
     (layout: PanelNode) => {
       if (!auth.token || !isHydrated) {
@@ -251,65 +343,329 @@ const App: React.FC = () => {
             workspace, and restore the same view every time you come back.
           </p>
           <div style={{ marginTop: '28px' }}>
-            <button style={primaryButtonStyle} type="button">
-              Login
+            <button style={primaryButtonStyle} type="button" onClick={() => setAuthMode('login')}>
+              {authMode === 'login' ? 'Login' : 'Back to Login'}
             </button>
           </div>
         </section>
 
         <section style={loginSideStyle}>
-          <form onSubmit={onSubmitLogin} style={cardStyle}>
-            <h2
-              style={{
-                margin: 0,
-                fontFamily: '"Space Grotesk", sans-serif',
-                fontSize: '1.8rem',
-              }}
-            >
-              Welcome Back
-            </h2>
-            <p style={{ margin: '10px 0 22px', color: '#475569' }}>
-              Use your account to restore your last split layout.
-            </p>
+          {authMode === 'login' && (
+            <form onSubmit={onSubmitLogin} style={cardStyle}>
+              <div style={{ marginBottom: '16px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '8px',
+                    borderBottom: '1px solid #e5e7eb',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('login')}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      border: 'none',
+                      background: 'transparent',
+                      fontWeight: 700,
+                      color: '#101827',
+                      borderBottom: '2px solid #0f766e',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Login
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('register')}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      border: 'none',
+                      background: 'transparent',
+                      fontWeight: 700,
+                      color: '#9ca3af',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Register
+                  </button>
+                </div>
+              </div>
 
-            <div style={{ marginBottom: '14px' }}>
-              <label style={labelStyle} htmlFor="email">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                style={inputStyle}
-                placeholder="you@example.com"
-              />
-            </div>
+              <h2
+                style={{
+                  margin: '0 0 10px',
+                  fontFamily: '"Space Grotesk", sans-serif',
+                  fontSize: '1.8rem',
+                }}
+              >
+                Welcome Back
+              </h2>
+              <p style={{ margin: '0 0 22px', color: '#475569' }}>
+                Use your account to restore your last split layout.
+              </p>
 
-            <div style={{ marginBottom: '18px' }}>
-              <label style={labelStyle} htmlFor="password">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                style={inputStyle}
-                placeholder="Enter your password"
-              />
-            </div>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={labelStyle} htmlFor="login-email">
+                  Email
+                </label>
+                <input
+                  id="login-email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  style={inputStyle}
+                  placeholder="you@example.com"
+                />
+              </div>
 
-            {message && (
-              <p style={{ color: '#b91c1c', margin: '0 0 16px', fontWeight: 600 }}>{message}</p>
-            )}
+              <div style={{ marginBottom: '18px' }}>
+                <label style={labelStyle} htmlFor="login-password">
+                  Password
+                </label>
+                <input
+                  id="login-password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  style={inputStyle}
+                  placeholder="Enter your password"
+                />
+              </div>
 
-            <button style={{ ...primaryButtonStyle, width: '100%' }} type="submit" disabled={isBusy}>
-              {isBusy ? 'Signing in...' : 'Login to Continue'}
-            </button>
-          </form>
+              {message && (
+                <p style={{ color: '#b91c1c', margin: '0 0 16px', fontWeight: 600 }}>
+                  {message}
+                </p>
+              )}
+
+              <button
+                style={{ ...primaryButtonStyle, width: '100%' }}
+                type="submit"
+                disabled={isBusy}
+              >
+                {isBusy ? 'Signing in...' : 'Login to Continue'}
+              </button>
+            </form>
+          )}
+
+          {authMode === 'register' && (
+            <form onSubmit={onSubmitRegister} style={cardStyle}>
+              <div style={{ marginBottom: '16px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '8px',
+                    borderBottom: '1px solid #e5e7eb',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('login')}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      border: 'none',
+                      background: 'transparent',
+                      fontWeight: 700,
+                      color: '#9ca3af',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Login
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('register')}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      border: 'none',
+                      background: 'transparent',
+                      fontWeight: 700,
+                      color: '#101827',
+                      borderBottom: '2px solid #0f766e',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Register
+                  </button>
+                </div>
+              </div>
+
+              <h2
+                style={{
+                  margin: '0 0 10px',
+                  fontFamily: '"Space Grotesk", sans-serif',
+                  fontSize: '1.8rem',
+                }}
+              >
+                Create Account
+              </h2>
+              <p style={{ margin: '0 0 22px', color: '#475569' }}>
+                Join and start building your perfect workspace layout.
+              </p>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={labelStyle} htmlFor="reg-name">
+                  Full Name
+                </label>
+                <input
+                  id="reg-name"
+                  type="text"
+                  required
+                  value={regName}
+                  onChange={(event) => setRegName(event.target.value)}
+                  style={inputStyle}
+                  placeholder="John Doe"
+                />
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={labelStyle} htmlFor="reg-email">
+                  Email
+                </label>
+                <input
+                  id="reg-email"
+                  type="email"
+                  required
+                  value={regEmail}
+                  onChange={(event) => setRegEmail(event.target.value)}
+                  style={inputStyle}
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={labelStyle} htmlFor="reg-password">
+                  Password
+                </label>
+                <input
+                  id="reg-password"
+                  type="password"
+                  required
+                  value={regPassword}
+                  onChange={(event) => setRegPassword(event.target.value)}
+                  style={inputStyle}
+                  placeholder="At least 6 characters"
+                />
+              </div>
+
+              <div style={{ marginBottom: '18px' }}>
+                <label style={labelStyle} htmlFor="reg-confirm">
+                  Confirm Password
+                </label>
+                <input
+                  id="reg-confirm"
+                  type="password"
+                  required
+                  value={regConfirmPassword}
+                  onChange={(event) => setRegConfirmPassword(event.target.value)}
+                  style={inputStyle}
+                  placeholder="Confirm your password"
+                />
+              </div>
+
+              {message && (
+                <p style={{ color: '#b91c1c', margin: '0 0 16px', fontWeight: 600 }}>
+                  {message}
+                </p>
+              )}
+
+              <button
+                style={{ ...primaryButtonStyle, width: '100%' }}
+                type="submit"
+                disabled={isBusy}
+              >
+                {isBusy ? 'Creating Account...' : 'Register'}
+              </button>
+            </form>
+          )}
+
+          {authMode === 'verify-otp' && (
+            <form onSubmit={onSubmitVerifyOtp} style={cardStyle}>
+              <h2
+                style={{
+                  margin: '0 0 10px',
+                  fontFamily: '"Space Grotesk", sans-serif',
+                  fontSize: '1.8rem',
+                }}
+              >
+                Verify Email
+              </h2>
+              <p style={{ margin: '0 0 22px', color: '#475569' }}>
+                Enter the OTP sent to <strong>{otpEmail}</strong>
+              </p>
+
+              <div style={{ marginBottom: '18px' }}>
+                <label style={labelStyle} htmlFor="otp">
+                  6-Digit OTP
+                </label>
+                <input
+                  id="otp"
+                  type="text"
+                  required
+                  maxLength={6}
+                  value={otp}
+                  onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
+                  style={{
+                    ...inputStyle,
+                    textAlign: 'center',
+                    fontSize: '1.4rem',
+                    letterSpacing: '0.5rem',
+                    fontWeight: 600,
+                  }}
+                  placeholder="000000"
+                />
+              </div>
+
+              {message && (
+                <p
+                  style={{
+                    color: message.includes('sent') ? '#047857' : '#b91c1c',
+                    margin: '0 0 16px',
+                    fontWeight: 600,
+                  }}
+                >
+                  {message}
+                </p>
+              )}
+
+              <button
+                style={{ ...primaryButtonStyle, width: '100%' }}
+                type="submit"
+                disabled={isBusy || otp.length < 6}
+              >
+                {isBusy ? 'Verifying...' : 'Verify & Login'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('login');
+                  setOtp('');
+                  setOtpEmail('');
+                }}
+                style={{
+                  width: '100%',
+                  marginTop: '12px',
+                  padding: '10px 18px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '999px',
+                  background: 'transparent',
+                  color: '#0f766e',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Back to Login
+              </button>
+            </form>
+          )}
         </section>
       </div>
     );

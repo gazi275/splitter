@@ -60,6 +60,42 @@ export type UserProfile = {
   email: string;
 };
 
+export type RegisterPayload = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+export type RegisterResult = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
+
+export type VerifyOtpPayload = {
+  email: string;
+  otp: string;
+};
+
+export const register = (payload: RegisterPayload) =>
+  apiRequest<RegisterResult>(
+    '/users/register',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+
+export const verifyOtp = (payload: VerifyOtpPayload) =>
+  apiRequest<LoginResult>(
+    '/users/verify-otp',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+
 export const login = (payload: LoginPayload) =>
   apiRequest<LoginResult>(
     '/auth/login',
