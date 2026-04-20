@@ -5,6 +5,7 @@ import {
   panelSplitContainerStyle,
   panelChildStyle,
   dividerStyle,
+  dividerLabelStyle,
   panelControlsContainerStyle,
   panelControlButtonStyle,
 } from '../../styles/componentStyles';
@@ -42,7 +43,9 @@ const Divider: React.FC<{
   isVertical: boolean;
   onDragStart: (e: React.MouseEvent<HTMLDivElement>) => void;
   isDragging: boolean;
-}> = ({ isVertical, onDragStart, isDragging }) => {
+  percentage: number;
+}> = ({ isVertical, onDragStart, isDragging, percentage }) => {
+  const labelText = `${Math.round(percentage)}%`;
 
   const handleMouseEnter = (event: React.MouseEvent<HTMLDivElement>) => {
     event.currentTarget.style.backgroundColor = COLORS.DIVIDER_HOVER;
@@ -58,7 +61,9 @@ const Divider: React.FC<{
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={dividerStyle(isVertical, isDragging)}
-    />
+    >
+      {isDragging && <div style={dividerLabelStyle}>{labelText}</div>}
+    </div>
   );
 };
 
@@ -68,11 +73,13 @@ const Divider: React.FC<{
 export const Panel: React.FC<PanelProps> = ({ node, onSplit, onRemove, isRoot }) => {
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [previewPercentage, setPreviewPercentage] = useState<number | null>(null);
   const isSplitNode = node.type === 'split';
   const isVertical = isSplitNode ? node.direction === 'v' : false;
 
   const handleDragEnd = () => {
     setDragging(false);
+    setPreviewPercentage(null);
   };
 
   const handleMouseMove = (e: MouseEvent) => {
@@ -90,6 +97,7 @@ export const Panel: React.FC<PanelProps> = ({ node, onSplit, onRemove, isRoot })
         Math.min(UI_CONSTANTS.MAX_PANEL_SIZE, newPos)
       );
       const newSize2 = 100 - newSize1;
+      setPreviewPercentage(newSize1);
       onSplit(node.id, 'resize', [newSize1, newSize2]);
     } else {
       const newPos = ((e.clientY - rect.top) / rect.height) * 100;
@@ -98,6 +106,7 @@ export const Panel: React.FC<PanelProps> = ({ node, onSplit, onRemove, isRoot })
         Math.min(UI_CONSTANTS.MAX_PANEL_SIZE, newPos)
       );
       const newSize2 = 100 - newSize1;
+      setPreviewPercentage(newSize1);
       onSplit(node.id, 'resize', [newSize1, newSize2]);
     }
   };
@@ -150,9 +159,11 @@ export const Panel: React.FC<PanelProps> = ({ node, onSplit, onRemove, isRoot })
   // Split node
   if (node.type === 'split') {
     const [size1, size2] = node.sizes;
+    const visiblePercentage = previewPercentage ?? size1;
 
     const handleDragStart = () => {
       setDragging(true);
+      setPreviewPercentage(size1);
     };
 
     return (
@@ -163,7 +174,12 @@ export const Panel: React.FC<PanelProps> = ({ node, onSplit, onRemove, isRoot })
         </div>
 
         {/* Divider */}
-        <Divider isVertical={isVertical} onDragStart={handleDragStart} isDragging={dragging} />
+        <Divider
+          isVertical={isVertical}
+          onDragStart={handleDragStart}
+          isDragging={dragging}
+          percentage={visiblePercentage}
+        />
 
         {/* Second Child */}
         <div style={panelChildStyle(size2)}>

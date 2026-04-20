@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { PanelNode, SplitDirection } from '../types/panel';
-import { generateNodeId, getRandomColor } from '../utils/colorUtils';
+import { generateNodeId, getDistinctColorPair } from '../utils/colorUtils';
 import { updateNodeById } from '../utils/treeUtils';
 
 /**
@@ -23,6 +23,8 @@ export const usePanelTree = (initialRoot: PanelNode) => {
           }
 
           if (node.type === 'leaf' && direction !== 'resize') {
+            const [firstColor, secondColor] = getDistinctColorPair();
+
             return {
               id: node.id,
               type: 'split',
@@ -32,12 +34,12 @@ export const usePanelTree = (initialRoot: PanelNode) => {
                 {
                   id: generateNodeId(),
                   type: 'leaf',
-                  color: getRandomColor(),
+                  color: firstColor,
                 },
                 {
                   id: generateNodeId(),
                   type: 'leaf',
-                  color: getRandomColor(),
+                  color: secondColor,
                 },
               ],
             };

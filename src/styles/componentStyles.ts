@@ -57,10 +57,29 @@ export const dividerStyle = (isVertical: boolean, isDragging: boolean): CSSPrope
   cursor: isVertical ? 'col-resize' : 'row-resize',
   userSelect: 'none',
   flexShrink: 0,
+  position: 'relative',
   boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.8)',
   transition: isDragging ? 'none' : `background-color ${UI_CONSTANTS.TRANSITION_DURATION}`,
   zIndex: Z_INDEX.DIVIDER,
 });
+
+export const dividerLabelStyle: CSSProperties = {
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  padding: '3px 8px',
+  borderRadius: '999px',
+  backgroundColor: 'rgba(0, 0, 0, 0.68)',
+  color: '#ffffff',
+  fontSize: '12px',
+  fontWeight: 700,
+  lineHeight: 1,
+  pointerEvents: 'none',
+  whiteSpace: 'nowrap',
+  letterSpacing: '0.02em',
+  boxShadow: '0 6px 18px rgba(0, 0, 0, 0.2)',
+};
 
 export const rootStyle: CSSProperties = {
   width: '100%',
