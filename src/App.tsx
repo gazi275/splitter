@@ -1,5 +1,5 @@
-import React, { FormEvent, useCallback, useEffect, useState } from 'react';
-import { PanelSplitter } from './components/PanelSplitter';
+import React, { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { PanelSplitter, PanelSplitterRef } from './components/PanelSplitter';
 import {
   forgotPassword,
   getMyLayout,
@@ -88,6 +88,9 @@ const App: React.FC = () => {
   const [savedLayout, setSavedLayout] = useState<PanelNode | null>(initialLayout);
   const [pendingLayout, setPendingLayout] = useState<PanelNode | null>(initialLayout);
   const [isHydrated, setIsHydrated] = useState(Boolean(initialToken));
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const panelSplitterRef = useRef<PanelSplitterRef | null>(null);
 
   const resetForgotState = useCallback(() => {
     setIsForgotFlowOpen(false);
@@ -241,6 +244,14 @@ const App: React.FC = () => {
     setPendingLayout(layout);
   }, [auth.token]);
 
+  const handleHistoryStateChange = useCallback(
+    ({ canUndo: nextCanUndo, canRedo: nextCanRedo }: { canUndo: boolean; canRedo: boolean }) => {
+      setCanUndo(nextCanUndo);
+      setCanRedo(nextCanRedo);
+    },
+    []
+  );
+
   const onLogout = async () => {
     setIsAuthBusy(true);
     try {
@@ -363,6 +374,24 @@ const App: React.FC = () => {
           </div>
         </div>
         <div style={topBarRightStyle}>
+          <button
+            style={{ ...secondaryButtonStyle, padding: '8px 12px' }}
+            type="button"
+            disabled={!canUndo}
+            onClick={() => panelSplitterRef.current?.undo()}
+            title="Undo"
+          >
+            Undo
+          </button>
+          <button
+            style={{ ...secondaryButtonStyle, padding: '8px 12px' }}
+            type="button"
+            disabled={!canRedo}
+            onClick={() => panelSplitterRef.current?.redo()}
+            title="Redo"
+          >
+            Redo
+          </button>
           <div style={userPillStyle}>
             <span style={userDotStyle} />
             <span>{auth.name || auth.email}</span>
@@ -373,7 +402,12 @@ const App: React.FC = () => {
       {message && <p style={{ margin: '10px 20px', color: '#b91c1c', fontWeight: 600 }}>{message}</p>}
       <section style={splitAreaStyle}>
         <div style={splitterContainerStyle}>
-          <PanelSplitter initialLayout={savedLayout || undefined} onLayoutChange={handleLayoutChange} />
+          <PanelSplitter
+            ref={panelSplitterRef}
+            initialLayout={savedLayout || undefined}
+            onLayoutChange={handleLayoutChange}
+            onHistoryStateChange={handleHistoryStateChange}
+          />
         </div>
       </section>
     </main>
