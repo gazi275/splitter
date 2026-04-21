@@ -77,7 +77,8 @@ const App: React.FC = () => {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
-  const [isBusy, setIsBusy] = useState(false);
+  const [isAuthBusy, setIsAuthBusy] = useState(false);
+  const [isForgotBusy, setIsForgotBusy] = useState(false);
   const [isForgotFlowOpen, setIsForgotFlowOpen] = useState(false);
   const [forgotStep, setForgotStep] = useState<ForgotPasswordStep>('request');
   const [forgotEmail, setForgotEmail] = useState('');
@@ -109,13 +110,13 @@ const App: React.FC = () => {
   useEffect(() => {
     const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
     if (!savedToken) return;
-    setIsBusy(true);
+    setIsAuthBusy(true);
     hydrateSession(savedToken)
       .catch(() => {
         console.error('Session restore failed. Keeping cached workspace state.');
         setIsHydrated(true);
       })
-      .finally(() => setIsBusy(false));
+      .finally(() => setIsAuthBusy(false));
   }, [hydrateSession]);
 
   useEffect(() => {
@@ -140,7 +141,7 @@ const App: React.FC = () => {
       return;
     }
     setMessage(null);
-    setIsBusy(true);
+    setIsAuthBusy(true);
     try {
       const result = await login({ email, password });
       localStorage.setItem(TOKEN_STORAGE_KEY, result.token);
@@ -149,7 +150,7 @@ const App: React.FC = () => {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Login failed. Please try again.');
     } finally {
-      setIsBusy(false);
+      setIsAuthBusy(false);
     }
   };
 
@@ -165,7 +166,7 @@ const App: React.FC = () => {
 
   const onForgotSendOtp = async () => {
     setMessage(null);
-    setIsBusy(true);
+    setIsForgotBusy(true);
     try {
       if (!forgotEmail) throw new Error('Email is required');
       await forgotPassword({ email: forgotEmail });
@@ -174,13 +175,13 @@ const App: React.FC = () => {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to send OTP.');
     } finally {
-      setIsBusy(false);
+      setIsForgotBusy(false);
     }
   };
 
   const onForgotVerifyOtp = async () => {
     setMessage(null);
-    setIsBusy(true);
+    setIsForgotBusy(true);
     try {
       if (!forgotOtp) throw new Error('OTP is required');
       await verifyForgotPassword({ email: forgotEmail, otp: forgotOtp });
@@ -189,13 +190,13 @@ const App: React.FC = () => {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'OTP verification failed.');
     } finally {
-      setIsBusy(false);
+      setIsForgotBusy(false);
     }
   };
 
   const onForgotResetPassword = async () => {
     setMessage(null);
-    setIsBusy(true);
+    setIsForgotBusy(true);
     try {
       if (forgotNewPassword.length < 6) throw new Error('Password must be at least 6 characters');
       if (forgotNewPassword !== forgotConfirmPassword) throw new Error('Passwords do not match');
@@ -208,14 +209,14 @@ const App: React.FC = () => {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Password reset failed.');
     } finally {
-      setIsBusy(false);
+      setIsForgotBusy(false);
     }
   };
 
   const onSubmitRegister = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage(null);
-    setIsBusy(true);
+    setIsAuthBusy(true);
     try {
       if (regPassword !== regConfirmPassword) throw new Error('Passwords do not match');
       if (regPassword.length < 6) throw new Error('Password must be at least 6 characters');
@@ -231,7 +232,7 @@ const App: React.FC = () => {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Registration failed. Please try again.');
     } finally {
-      setIsBusy(false);
+      setIsAuthBusy(false);
     }
   };
 
@@ -241,7 +242,7 @@ const App: React.FC = () => {
   }, [auth.token]);
 
   const onLogout = async () => {
-    setIsBusy(true);
+    setIsAuthBusy(true);
     try {
       if (auth.token) await logout(auth.token);
     } catch (error) {
@@ -258,7 +259,7 @@ const App: React.FC = () => {
       setEmail('');
       setPassword('');
       setMessage(null);
-      setIsBusy(false);
+      setIsAuthBusy(false);
     }
   };
 
@@ -299,8 +300,8 @@ const App: React.FC = () => {
                     <>
                       <div style={{ marginBottom: '10px' }}><label style={labelStyle} htmlFor="forgot-email">Account Email</label><input id="forgot-email" type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" /></div>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button type="button" onClick={onForgotSendOtp} style={{ ...primaryButtonStyle, flex: 1 }} disabled={isBusy}>{isBusy ? 'Sending...' : 'Send OTP'}</button>
-                        <button type="button" onClick={resetForgotState} style={{ ...secondaryButtonStyle, flex: 1 }} disabled={isBusy}>Cancel</button>
+                        <button type="button" onClick={onForgotSendOtp} style={{ ...primaryButtonStyle, flex: 1 }} disabled={isForgotBusy}>{isForgotBusy ? 'Sending...' : 'Send OTP'}</button>
+                        <button type="button" onClick={resetForgotState} style={{ ...secondaryButtonStyle, flex: 1 }} disabled={isForgotBusy}>Cancel</button>
                       </div>
                     </>
                   )}
@@ -308,8 +309,8 @@ const App: React.FC = () => {
                     <>
                       <div style={{ marginBottom: '10px' }}><label style={labelStyle} htmlFor="forgot-otp">OTP</label><input id="forgot-otp" type="text" value={forgotOtp} onChange={(e) => setForgotOtp(e.target.value)} style={inputStyle} placeholder="6 digit OTP" /></div>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button type="button" onClick={onForgotVerifyOtp} style={{ ...primaryButtonStyle, flex: 1 }} disabled={isBusy}>{isBusy ? 'Verifying...' : 'Verify OTP'}</button>
-                        <button type="button" onClick={() => setForgotStep('request')} style={{ ...secondaryButtonStyle, flex: 1 }} disabled={isBusy}>Back</button>
+                        <button type="button" onClick={onForgotVerifyOtp} style={{ ...primaryButtonStyle, flex: 1 }} disabled={isForgotBusy}>{isForgotBusy ? 'Verifying...' : 'Verify OTP'}</button>
+                        <button type="button" onClick={() => setForgotStep('request')} style={{ ...secondaryButtonStyle, flex: 1 }} disabled={isForgotBusy}>Back</button>
                       </div>
                     </>
                   )}
@@ -318,8 +319,8 @@ const App: React.FC = () => {
                       <div style={{ marginBottom: '10px' }}><label style={labelStyle} htmlFor="forgot-new-password">New Password</label><input id="forgot-new-password" type="password" value={forgotNewPassword} onChange={(e) => setForgotNewPassword(e.target.value)} style={inputStyle} placeholder="At least 6 characters" /></div>
                       <div style={{ marginBottom: '10px' }}><label style={labelStyle} htmlFor="forgot-confirm-password">Confirm Password</label><input id="forgot-confirm-password" type="password" value={forgotConfirmPassword} onChange={(e) => setForgotConfirmPassword(e.target.value)} style={inputStyle} placeholder="Confirm password" /></div>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button type="button" onClick={onForgotResetPassword} style={{ ...primaryButtonStyle, flex: 1 }} disabled={isBusy}>{isBusy ? 'Resetting...' : 'Reset Password'}</button>
-                        <button type="button" onClick={() => setForgotStep('verify')} style={{ ...secondaryButtonStyle, flex: 1 }} disabled={isBusy}>Back</button>
+                        <button type="button" onClick={onForgotResetPassword} style={{ ...primaryButtonStyle, flex: 1 }} disabled={isForgotBusy}>{isForgotBusy ? 'Resetting...' : 'Reset Password'}</button>
+                        <button type="button" onClick={() => setForgotStep('verify')} style={{ ...secondaryButtonStyle, flex: 1 }} disabled={isForgotBusy}>Back</button>
                       </div>
                     </>
                   )}
@@ -327,7 +328,7 @@ const App: React.FC = () => {
               )}
 
               {message && <p style={{ color: '#b91c1c', margin: '0 0 16px', fontWeight: 600 }}>{message}</p>}
-              <button style={{ ...primaryButtonStyle, width: '100%' }} type="submit" disabled={isBusy}>{isBusy ? 'Signing in...' : 'Login to Continue'}</button>
+              <button style={{ ...primaryButtonStyle, width: '100%' }} type="submit" disabled={isAuthBusy}>{isAuthBusy ? 'Signing in...' : 'Login to Continue'}</button>
             </form>
           )}
           {authMode === 'register' && (
@@ -343,7 +344,7 @@ const App: React.FC = () => {
               <div style={{ marginBottom: '14px' }}><label style={labelStyle} htmlFor="reg-password">Password</label><input id="reg-password" type="password" required value={regPassword} onChange={(e) => setRegPassword(e.target.value)} style={inputStyle} placeholder="At least 6 characters" /></div>
               <div style={{ marginBottom: '18px' }}><label style={labelStyle} htmlFor="reg-confirm">Confirm Password</label><input id="reg-confirm" type="password" required value={regConfirmPassword} onChange={(e) => setRegConfirmPassword(e.target.value)} style={inputStyle} placeholder="Confirm your password" /></div>
               {message && <p style={{ color: '#b91c1c', margin: '0 0 16px', fontWeight: 600 }}>{message}</p>}
-              <button style={{ ...primaryButtonStyle, width: '100%' }} type="submit" disabled={isBusy}>{isBusy ? 'Creating Account...' : 'Register & Login'}</button>
+              <button style={{ ...primaryButtonStyle, width: '100%' }} type="submit" disabled={isAuthBusy}>{isAuthBusy ? 'Creating Account...' : 'Register & Login'}</button>
             </form>
           )}
         </section>
@@ -366,7 +367,7 @@ const App: React.FC = () => {
             <span style={userDotStyle} />
             <span>{auth.name || auth.email}</span>
           </div>
-          <button style={logoutButtonStyle} type="button" onClick={onLogout} disabled={isBusy}>{isBusy ? 'Logging out...' : 'Logout'}</button>
+          <button style={logoutButtonStyle} type="button" onClick={onLogout} disabled={isAuthBusy}>{isAuthBusy ? 'Logging out...' : 'Logout'}</button>
         </div>
       </header>
       {message && <p style={{ margin: '10px 20px', color: '#b91c1c', fontWeight: 600 }}>{message}</p>}
