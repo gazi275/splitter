@@ -14,7 +14,7 @@ export const topBarStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  padding: '0 18px',
+  padding: '0 24px',
   background: 'rgba(255, 255, 255, 0.92)',
   backdropFilter: 'blur(10px)',
   boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
@@ -45,12 +45,14 @@ export const appTitleStyle: React.CSSProperties = {
   fontSize: '1.04rem',
   letterSpacing: '0.02em',
   color: '#0f172a',
+  textAlign: 'center',
 };
 
 export const appSubtitleStyle: React.CSSProperties = {
   margin: '3px 0 0',
   fontSize: '0.8rem',
   color: '#64748b',
+  textAlign: 'center',
 };
 
 export const topBarRightStyle: React.CSSProperties = {
