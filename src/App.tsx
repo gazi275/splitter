@@ -91,6 +91,7 @@ const App: React.FC = () => {
   const resetForgotState = useCallback(() => {
     setIsForgotFlowOpen(false);
     setForgotStep('request');
+    setForgotEmail('');
     setForgotOtp('');
     setForgotNewPassword('');
     setForgotConfirmPassword('');
@@ -254,6 +255,7 @@ const App: React.FC = () => {
       setIsHydrated(false);
       setAuthMode('login');
       resetForgotState();
+      setEmail('');
       setPassword('');
       setMessage(null);
       setIsBusy(false);
