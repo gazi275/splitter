@@ -41,11 +41,34 @@ import {
 } from './styles/appShellStyles';
 
 const TOKEN_STORAGE_KEY = 'split.auth.token';
+const LAYOUT_CACHE_STORAGE_KEY = 'split.layout.cache';
 type AuthMode = 'login' | 'register';
 type ForgotPasswordStep = 'request' | 'verify' | 'reset';
 
+const getStoredToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(TOKEN_STORAGE_KEY);
+};
+
+const getCachedLayout = (): PanelNode | null => {
+  if (typeof window === 'undefined') return null;
+
+  const raw = localStorage.getItem(LAYOUT_CACHE_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as PanelNode;
+  } catch {
+    localStorage.removeItem(LAYOUT_CACHE_STORAGE_KEY);
+    return null;
+  }
+};
+
 const App: React.FC = () => {
-  const [auth, setAuth] = useState<AuthState>({ token: null, email: null, name: null });
+  const initialToken = getStoredToken();
+  const initialLayout = getCachedLayout();
+
+  const [auth, setAuth] = useState<AuthState>({ token: initialToken, email: null, name: null });
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,9 +84,9 @@ const App: React.FC = () => {
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
-  const [savedLayout, setSavedLayout] = useState<PanelNode | null>(null);
-  const [pendingLayout, setPendingLayout] = useState<PanelNode | null>(null);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [savedLayout, setSavedLayout] = useState<PanelNode | null>(initialLayout);
+  const [pendingLayout, setPendingLayout] = useState<PanelNode | null>(initialLayout);
+  const [isHydrated, setIsHydrated] = useState(Boolean(initialToken));
 
   const resetForgotState = useCallback(() => {
     setIsForgotFlowOpen(false);
@@ -87,9 +110,17 @@ const App: React.FC = () => {
     if (!savedToken) return;
     setIsBusy(true);
     hydrateSession(savedToken)
-      .catch(() => localStorage.removeItem(TOKEN_STORAGE_KEY))
+      .catch(() => {
+        console.error('Session restore failed. Keeping cached workspace state.');
+        setIsHydrated(true);
+      })
       .finally(() => setIsBusy(false));
   }, [hydrateSession]);
+
+  useEffect(() => {
+    if (!auth.token || !pendingLayout) return;
+    localStorage.setItem(LAYOUT_CACHE_STORAGE_KEY, JSON.stringify(pendingLayout));
+  }, [auth.token, pendingLayout]);
 
   useEffect(() => {
     if (!auth.token || !pendingLayout || !isHydrated) return;
@@ -204,9 +235,9 @@ const App: React.FC = () => {
   };
 
   const handleLayoutChange = useCallback((layout: PanelNode) => {
-    if (!auth.token || !isHydrated) return;
+    if (!auth.token) return;
     setPendingLayout(layout);
-  }, [auth.token, isHydrated]);
+  }, [auth.token]);
 
   const onLogout = async () => {
     setIsBusy(true);
@@ -216,6 +247,7 @@ const App: React.FC = () => {
       console.error('Logout error:', error);
     } finally {
       localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(LAYOUT_CACHE_STORAGE_KEY);
       setAuth({ token: null, email: null, name: null });
       setSavedLayout(null);
       setPendingLayout(null);
@@ -337,13 +369,9 @@ const App: React.FC = () => {
       </header>
       {message && <p style={{ margin: '10px 20px', color: '#b91c1c', fontWeight: 600 }}>{message}</p>}
       <section style={splitAreaStyle}>
-        {isBusy && !isHydrated ? (
-          <div style={{ height: '100%', display: 'grid', placeItems: 'center', fontFamily: '"Space Grotesk", sans-serif', color: '#334155' }}>Restoring your workspace...</div>
-        ) : (
-          <div style={splitterContainerStyle}>
-            <PanelSplitter initialLayout={savedLayout || undefined} onLayoutChange={handleLayoutChange} />
-          </div>
-        )}
+        <div style={splitterContainerStyle}>
+          <PanelSplitter initialLayout={savedLayout || undefined} onLayoutChange={handleLayoutChange} />
+        </div>
       </section>
     </main>
   );
