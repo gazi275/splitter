@@ -2,7 +2,7 @@ import { PanelNode } from '../types/panel';
 
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
-  'http://localhost:5000/api/v1';
+  'https://split-backend-eight.vercel.app/api/v1';
 
 type ApiResponse<T> = {
   success: boolean;
