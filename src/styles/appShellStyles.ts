@@ -15,9 +15,10 @@ export const topBarStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: '0 24px',
-  background: 'rgba(255, 255, 255, 0.92)',
-  backdropFilter: 'blur(10px)',
-  boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
+  background:
+    'linear-gradient(135deg, rgba(255, 255, 255, 0.78) 0%, rgba(241, 245, 249, 0.72) 100%)',
+  backdropFilter: 'blur(12px)',
+  boxShadow: '0 10px 30px rgba(15, 23, 42, 0.08)',
 };
 
 export const topBarLeftStyle: React.CSSProperties = {

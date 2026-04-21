@@ -45,6 +45,15 @@ const LAYOUT_CACHE_STORAGE_KEY = 'split.layout.cache';
 type AuthMode = 'login' | 'register';
 type ForgotPasswordStep = 'request' | 'verify' | 'reset';
 
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{6,}$/;
+
+const getStrongPasswordError = (value: string): string | null => {
+  if (!STRONG_PASSWORD_REGEX.test(value)) {
+    return 'Password must be at least 6 characters and include uppercase, lowercase, number, and special character.';
+  }
+  return null;
+};
+
 const getStoredToken = (): string | null => {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -76,6 +85,7 @@ const App: React.FC = () => {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [showPasswords, setShowPasswords] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isAuthBusy, setIsAuthBusy] = useState(false);
   const [isForgotBusy, setIsForgotBusy] = useState(false);
@@ -91,6 +101,20 @@ const App: React.FC = () => {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const panelSplitterRef = useRef<PanelSplitterRef | null>(null);
+
+  const passwordEyeButtonStyle: React.CSSProperties = {
+    position: 'absolute',
+    right: '10px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    border: 'none',
+    background: 'transparent',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    lineHeight: 1,
+    color: '#475569',
+    padding: '4px',
+  };
 
   const resetForgotState = useCallback(() => {
     setIsForgotFlowOpen(false);
@@ -201,7 +225,8 @@ const App: React.FC = () => {
     setMessage(null);
     setIsForgotBusy(true);
     try {
-      if (forgotNewPassword.length < 6) throw new Error('Password must be at least 6 characters');
+      const passwordError = getStrongPasswordError(forgotNewPassword);
+      if (passwordError) throw new Error(passwordError);
       if (forgotNewPassword !== forgotConfirmPassword) throw new Error('Passwords do not match');
 
       await resetPassword({ email: forgotEmail, newPassword: forgotNewPassword });
@@ -222,7 +247,8 @@ const App: React.FC = () => {
     setIsAuthBusy(true);
     try {
       if (regPassword !== regConfirmPassword) throw new Error('Passwords do not match');
-      if (regPassword.length < 6) throw new Error('Password must be at least 6 characters');
+      const passwordError = getStrongPasswordError(regPassword);
+      if (passwordError) throw new Error(passwordError);
       await register({ name: regName, email: regEmail, password: regPassword });
       setAuthMode('login');
       setEmail(regEmail);
@@ -293,7 +319,29 @@ const App: React.FC = () => {
               <h2 style={{ margin: '0 0 10px', fontFamily: '"Space Grotesk", sans-serif', fontSize: '1.8rem' }}>Welcome Back</h2>
               <p style={{ margin: '0 0 22px', color: '#475569' }}>Use your account to restore your last split layout.</p>
               <div style={{ marginBottom: '14px' }}><label style={labelStyle} htmlFor="login-email">Email</label><input id="login-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" /></div>
-              <div style={{ marginBottom: '8px' }}><label style={labelStyle} htmlFor="login-password">Password</label><input id="login-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} placeholder="Enter your password" /></div>
+              <div style={{ marginBottom: '8px' }}>
+                <label style={labelStyle} htmlFor="login-password">Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id="login-password"
+                    type={showPasswords ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{ ...inputStyle, paddingRight: '42px' }}
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords((prev) => !prev)}
+                    style={passwordEyeButtonStyle}
+                    title={showPasswords ? 'Hide password' : 'Show password'}
+                    aria-label={showPasswords ? 'Hide password' : 'Show password'}
+                  >
+                    {showPasswords ? '\u{1F648}' : '\u{1F441}'}
+                  </button>
+                </div>
+              </div>
               <div style={authMetaRowStyle}>
                 <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Need help signing in?</span>
                 <button type="button" style={textLinkButtonStyle} onClick={onForgotOpen}>Forgot password?</button>
@@ -327,8 +375,36 @@ const App: React.FC = () => {
                   )}
                   {forgotStep === 'reset' && (
                     <>
-                      <div style={{ marginBottom: '10px' }}><label style={labelStyle} htmlFor="forgot-new-password">New Password</label><input id="forgot-new-password" type="password" value={forgotNewPassword} onChange={(e) => setForgotNewPassword(e.target.value)} style={inputStyle} placeholder="At least 6 characters" /></div>
-                      <div style={{ marginBottom: '10px' }}><label style={labelStyle} htmlFor="forgot-confirm-password">Confirm Password</label><input id="forgot-confirm-password" type="password" value={forgotConfirmPassword} onChange={(e) => setForgotConfirmPassword(e.target.value)} style={inputStyle} placeholder="Confirm password" /></div>
+                      <div style={{ marginBottom: '10px' }}>
+                        <label style={labelStyle} htmlFor="forgot-new-password">New Password</label>
+                        <div style={{ position: 'relative' }}>
+                          <input id="forgot-new-password" type={showPasswords ? 'text' : 'password'} value={forgotNewPassword} onChange={(e) => setForgotNewPassword(e.target.value)} style={{ ...inputStyle, paddingRight: '42px' }} placeholder="Min 6, Aa1@ format" />
+                          <button
+                            type="button"
+                            onClick={() => setShowPasswords((prev) => !prev)}
+                            style={passwordEyeButtonStyle}
+                            title={showPasswords ? 'Hide password' : 'Show password'}
+                            aria-label={showPasswords ? 'Hide password' : 'Show password'}
+                          >
+                            {showPasswords ? '\u{1F648}' : '\u{1F441}'}
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ marginBottom: '10px' }}>
+                        <label style={labelStyle} htmlFor="forgot-confirm-password">Confirm Password</label>
+                        <div style={{ position: 'relative' }}>
+                          <input id="forgot-confirm-password" type={showPasswords ? 'text' : 'password'} value={forgotConfirmPassword} onChange={(e) => setForgotConfirmPassword(e.target.value)} style={{ ...inputStyle, paddingRight: '42px' }} placeholder="Confirm password" />
+                          <button
+                            type="button"
+                            onClick={() => setShowPasswords((prev) => !prev)}
+                            style={passwordEyeButtonStyle}
+                            title={showPasswords ? 'Hide password' : 'Show password'}
+                            aria-label={showPasswords ? 'Hide password' : 'Show password'}
+                          >
+                            {showPasswords ? '\u{1F648}' : '\u{1F441}'}
+                          </button>
+                        </div>
+                      </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button type="button" onClick={onForgotResetPassword} style={{ ...primaryButtonStyle, flex: 1 }} disabled={isForgotBusy}>{isForgotBusy ? 'Resetting...' : 'Reset Password'}</button>
                         <button type="button" onClick={() => setForgotStep('verify')} style={{ ...secondaryButtonStyle, flex: 1 }} disabled={isForgotBusy}>Back</button>
@@ -352,8 +428,36 @@ const App: React.FC = () => {
               <p style={{ margin: '0 0 22px', color: '#475569' }}>Join and start building your perfect workspace layout.</p>
               <div style={{ marginBottom: '14px' }}><label style={labelStyle} htmlFor="reg-name">Full Name</label><input id="reg-name" type="text" required value={regName} onChange={(e) => setRegName(e.target.value)} style={inputStyle} placeholder="John Doe" /></div>
               <div style={{ marginBottom: '14px' }}><label style={labelStyle} htmlFor="reg-email">Email</label><input id="reg-email" type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" /></div>
-              <div style={{ marginBottom: '14px' }}><label style={labelStyle} htmlFor="reg-password">Password</label><input id="reg-password" type="password" required value={regPassword} onChange={(e) => setRegPassword(e.target.value)} style={inputStyle} placeholder="At least 6 characters" /></div>
-              <div style={{ marginBottom: '18px' }}><label style={labelStyle} htmlFor="reg-confirm">Confirm Password</label><input id="reg-confirm" type="password" required value={regConfirmPassword} onChange={(e) => setRegConfirmPassword(e.target.value)} style={inputStyle} placeholder="Confirm your password" /></div>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={labelStyle} htmlFor="reg-password">Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input id="reg-password" type={showPasswords ? 'text' : 'password'} required value={regPassword} onChange={(e) => setRegPassword(e.target.value)} style={{ ...inputStyle, paddingRight: '42px' }} placeholder="Min 6, Aa1@ format" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords((prev) => !prev)}
+                    style={passwordEyeButtonStyle}
+                    title={showPasswords ? 'Hide password' : 'Show password'}
+                    aria-label={showPasswords ? 'Hide password' : 'Show password'}
+                  >
+                    {showPasswords ? '\u{1F648}' : '\u{1F441}'}
+                  </button>
+                </div>
+              </div>
+              <div style={{ marginBottom: '18px' }}>
+                <label style={labelStyle} htmlFor="reg-confirm">Confirm Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input id="reg-confirm" type={showPasswords ? 'text' : 'password'} required value={regConfirmPassword} onChange={(e) => setRegConfirmPassword(e.target.value)} style={{ ...inputStyle, paddingRight: '42px' }} placeholder="Confirm your password" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords((prev) => !prev)}
+                    style={passwordEyeButtonStyle}
+                    title={showPasswords ? 'Hide password' : 'Show password'}
+                    aria-label={showPasswords ? 'Hide password' : 'Show password'}
+                  >
+                    {showPasswords ? '\u{1F648}' : '\u{1F441}'}
+                  </button>
+                </div>
+              </div>
               {message && <p style={{ color: '#b91c1c', margin: '0 0 16px', fontWeight: 600 }}>{message}</p>}
               <button style={{ ...primaryButtonStyle, width: '100%' }} type="submit" disabled={isAuthBusy}>{isAuthBusy ? 'Creating Account...' : 'Register & Login'}</button>
             </form>
