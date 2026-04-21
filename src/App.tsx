@@ -1,6 +1,16 @@
 import React, { FormEvent, useCallback, useEffect, useState } from 'react';
 import { PanelSplitter } from './components/PanelSplitter';
-import { getMyLayout, getMyProfile, login, logout, register, saveMyLayout } from './lib/api';
+import {
+  forgotPassword,
+  getMyLayout,
+  getMyProfile,
+  login,
+  logout,
+  register,
+  resetPassword,
+  saveMyLayout,
+  verifyForgotPassword,
+} from './lib/api';
 import { PanelNode } from './types/panel';
 import { AuthState } from './types/auth';
 import {
@@ -8,6 +18,7 @@ import {
   appShellStyle,
   appSubtitleStyle,
   appTitleStyle,
+  authMetaRowStyle,
   authTabButtonStyle,
   cardStyle,
   heroPanelStyle,
@@ -19,7 +30,9 @@ import {
   primaryButtonStyle,
   splitAreaStyle,
   splitterContainerStyle,
+  secondaryButtonStyle,
   tabStripStyle,
+  textLinkButtonStyle,
   topBarLeftStyle,
   topBarRightStyle,
   topBarStyle,
@@ -29,6 +42,7 @@ import {
 
 const TOKEN_STORAGE_KEY = 'split.auth.token';
 type AuthMode = 'login' | 'register';
+type ForgotPasswordStep = 'request' | 'verify' | 'reset';
 
 const App: React.FC = () => {
   const [auth, setAuth] = useState<AuthState>({ token: null, email: null, name: null });
@@ -41,9 +55,23 @@ const App: React.FC = () => {
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  const [isForgotFlowOpen, setIsForgotFlowOpen] = useState(false);
+  const [forgotStep, setForgotStep] = useState<ForgotPasswordStep>('request');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
   const [savedLayout, setSavedLayout] = useState<PanelNode | null>(null);
   const [pendingLayout, setPendingLayout] = useState<PanelNode | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+
+  const resetForgotState = useCallback(() => {
+    setIsForgotFlowOpen(false);
+    setForgotStep('request');
+    setForgotOtp('');
+    setForgotNewPassword('');
+    setForgotConfirmPassword('');
+  }, []);
 
   const hydrateSession = useCallback(async (token: string) => {
     const profile = await getMyProfile(token);
@@ -75,6 +103,10 @@ const App: React.FC = () => {
 
   const onSubmitLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isForgotFlowOpen) {
+      setMessage('Finish or cancel forgot password flow before login.');
+      return;
+    }
     setMessage(null);
     setIsBusy(true);
     try {
@@ -84,6 +116,65 @@ const App: React.FC = () => {
       setPassword('');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Login failed. Please try again.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const onForgotOpen = () => {
+    setMessage(null);
+    setIsForgotFlowOpen(true);
+    setForgotStep('request');
+    setForgotEmail(email || forgotEmail);
+    setForgotOtp('');
+    setForgotNewPassword('');
+    setForgotConfirmPassword('');
+  };
+
+  const onForgotSendOtp = async () => {
+    setMessage(null);
+    setIsBusy(true);
+    try {
+      if (!forgotEmail) throw new Error('Email is required');
+      await forgotPassword({ email: forgotEmail });
+      setForgotStep('verify');
+      setMessage('OTP sent to your email. Please verify OTP.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to send OTP.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const onForgotVerifyOtp = async () => {
+    setMessage(null);
+    setIsBusy(true);
+    try {
+      if (!forgotOtp) throw new Error('OTP is required');
+      await verifyForgotPassword({ email: forgotEmail, otp: forgotOtp });
+      setForgotStep('reset');
+      setMessage('OTP verified. Please set your new password.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'OTP verification failed.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const onForgotResetPassword = async () => {
+    setMessage(null);
+    setIsBusy(true);
+    try {
+      if (forgotNewPassword.length < 6) throw new Error('Password must be at least 6 characters');
+      if (forgotNewPassword !== forgotConfirmPassword) throw new Error('Passwords do not match');
+
+      await resetPassword({ email: forgotEmail, newPassword: forgotNewPassword });
+      setEmail(forgotEmail);
+      setPassword('');
+      resetForgotState();
+      setMessage('Password reset successful. Please login.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Password reset failed.');
     } finally {
       setIsBusy(false);
     }
@@ -130,6 +221,7 @@ const App: React.FC = () => {
       setPendingLayout(null);
       setIsHydrated(false);
       setAuthMode('login');
+      resetForgotState();
       setPassword('');
       setMessage(null);
       setIsBusy(false);
@@ -149,13 +241,57 @@ const App: React.FC = () => {
           {authMode === 'login' && (
             <form onSubmit={onSubmitLogin} style={cardStyle}>
               <div style={tabStripStyle}>
-                <button type="button" onClick={() => setAuthMode('login')} style={authTabButtonStyle(true)}>Login</button>
-                <button type="button" onClick={() => setAuthMode('register')} style={authTabButtonStyle(false)}>Register</button>
+                <button type="button" onClick={() => { resetForgotState(); setAuthMode('login'); }} style={authTabButtonStyle(true)}>Login</button>
+                <button type="button" onClick={() => { resetForgotState(); setAuthMode('register'); }} style={authTabButtonStyle(false)}>Register</button>
               </div>
               <h2 style={{ margin: '0 0 10px', fontFamily: '"Space Grotesk", sans-serif', fontSize: '1.8rem' }}>Welcome Back</h2>
               <p style={{ margin: '0 0 22px', color: '#475569' }}>Use your account to restore your last split layout.</p>
               <div style={{ marginBottom: '14px' }}><label style={labelStyle} htmlFor="login-email">Email</label><input id="login-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" /></div>
-              <div style={{ marginBottom: '18px' }}><label style={labelStyle} htmlFor="login-password">Password</label><input id="login-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} placeholder="Enter your password" /></div>
+              <div style={{ marginBottom: '8px' }}><label style={labelStyle} htmlFor="login-password">Password</label><input id="login-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} placeholder="Enter your password" /></div>
+              <div style={authMetaRowStyle}>
+                <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Need help signing in?</span>
+                <button type="button" style={textLinkButtonStyle} onClick={onForgotOpen}>Forgot password?</button>
+              </div>
+
+              {isForgotFlowOpen && (
+                <div
+                  style={{ border: '1px solid rgba(15, 118, 110, 0.18)', borderRadius: '14px', padding: '14px', marginBottom: '16px', background: 'rgba(240, 253, 250, 0.55)' }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') event.preventDefault();
+                  }}
+                >
+                  <p style={{ margin: '0 0 10px', color: '#0f766e', fontWeight: 700, fontSize: '0.9rem' }}>Reset Password</p>
+                  {forgotStep === 'request' && (
+                    <>
+                      <div style={{ marginBottom: '10px' }}><label style={labelStyle} htmlFor="forgot-email">Account Email</label><input id="forgot-email" type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" /></div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button type="button" onClick={onForgotSendOtp} style={{ ...primaryButtonStyle, flex: 1 }} disabled={isBusy}>{isBusy ? 'Sending...' : 'Send OTP'}</button>
+                        <button type="button" onClick={resetForgotState} style={{ ...secondaryButtonStyle, flex: 1 }} disabled={isBusy}>Cancel</button>
+                      </div>
+                    </>
+                  )}
+                  {forgotStep === 'verify' && (
+                    <>
+                      <div style={{ marginBottom: '10px' }}><label style={labelStyle} htmlFor="forgot-otp">OTP</label><input id="forgot-otp" type="text" value={forgotOtp} onChange={(e) => setForgotOtp(e.target.value)} style={inputStyle} placeholder="6 digit OTP" /></div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button type="button" onClick={onForgotVerifyOtp} style={{ ...primaryButtonStyle, flex: 1 }} disabled={isBusy}>{isBusy ? 'Verifying...' : 'Verify OTP'}</button>
+                        <button type="button" onClick={() => setForgotStep('request')} style={{ ...secondaryButtonStyle, flex: 1 }} disabled={isBusy}>Back</button>
+                      </div>
+                    </>
+                  )}
+                  {forgotStep === 'reset' && (
+                    <>
+                      <div style={{ marginBottom: '10px' }}><label style={labelStyle} htmlFor="forgot-new-password">New Password</label><input id="forgot-new-password" type="password" value={forgotNewPassword} onChange={(e) => setForgotNewPassword(e.target.value)} style={inputStyle} placeholder="At least 6 characters" /></div>
+                      <div style={{ marginBottom: '10px' }}><label style={labelStyle} htmlFor="forgot-confirm-password">Confirm Password</label><input id="forgot-confirm-password" type="password" value={forgotConfirmPassword} onChange={(e) => setForgotConfirmPassword(e.target.value)} style={inputStyle} placeholder="Confirm password" /></div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button type="button" onClick={onForgotResetPassword} style={{ ...primaryButtonStyle, flex: 1 }} disabled={isBusy}>{isBusy ? 'Resetting...' : 'Reset Password'}</button>
+                        <button type="button" onClick={() => setForgotStep('verify')} style={{ ...secondaryButtonStyle, flex: 1 }} disabled={isBusy}>Back</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               {message && <p style={{ color: '#b91c1c', margin: '0 0 16px', fontWeight: 600 }}>{message}</p>}
               <button style={{ ...primaryButtonStyle, width: '100%' }} type="submit" disabled={isBusy}>{isBusy ? 'Signing in...' : 'Login to Continue'}</button>
             </form>
@@ -163,8 +299,8 @@ const App: React.FC = () => {
           {authMode === 'register' && (
             <form onSubmit={onSubmitRegister} style={cardStyle}>
               <div style={tabStripStyle}>
-                <button type="button" onClick={() => setAuthMode('login')} style={authTabButtonStyle(false)}>Login</button>
-                <button type="button" onClick={() => setAuthMode('register')} style={authTabButtonStyle(true)}>Register</button>
+                <button type="button" onClick={() => { resetForgotState(); setAuthMode('login'); }} style={authTabButtonStyle(false)}>Login</button>
+                <button type="button" onClick={() => { resetForgotState(); setAuthMode('register'); }} style={authTabButtonStyle(true)}>Register</button>
               </div>
               <h2 style={{ margin: '0 0 10px', fontFamily: '"Space Grotesk", sans-serif', fontSize: '1.8rem' }}>Create Account</h2>
               <p style={{ margin: '0 0 22px', color: '#475569' }}>Join and start building your perfect workspace layout.</p>

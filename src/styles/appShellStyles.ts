@@ -180,3 +180,31 @@ export const authTabButtonStyle = (active: boolean): React.CSSProperties => ({
   borderBottom: active ? '2px solid #0f766e' : '2px solid transparent',
   cursor: 'pointer',
 });
+
+export const authMetaRowStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: '16px',
+};
+
+export const textLinkButtonStyle: React.CSSProperties = {
+  border: 'none',
+  background: 'transparent',
+  color: '#0f766e',
+  cursor: 'pointer',
+  fontWeight: 700,
+  padding: 0,
+  fontSize: '0.86rem',
+};
+
+export const secondaryButtonStyle: React.CSSProperties = {
+  border: '1px solid rgba(15, 23, 42, 0.18)',
+  borderRadius: '999px',
+  padding: '10px 16px',
+  fontWeight: 700,
+  fontSize: '0.9rem',
+  cursor: 'pointer',
+  color: '#0f172a',
+  background: '#ffffff',
+};

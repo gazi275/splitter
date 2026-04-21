@@ -78,6 +78,20 @@ export type VerifyOtpPayload = {
   otp: string;
 };
 
+export type ForgotPasswordPayload = {
+  email: string;
+};
+
+export type VerifyForgotPasswordPayload = {
+  email: string;
+  otp: string;
+};
+
+export type ResetPasswordPayload = {
+  email: string;
+  newPassword: string;
+};
+
 export const register = (payload: RegisterPayload) =>
   apiRequest<LoginResult>(
     '/users/register',
@@ -126,4 +140,31 @@ export const saveMyLayout = (token: string, layout: PanelNode) =>
       body: JSON.stringify({ layout }),
     },
     token
+  );
+
+export const forgotPassword = (payload: ForgotPasswordPayload) =>
+  apiRequest<null>(
+    '/auth/forgot-password',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+
+export const verifyForgotPassword = (payload: VerifyForgotPasswordPayload) =>
+  apiRequest<{ message: string }>(
+    '/auth/verify-forgot-password',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+
+export const resetPassword = (payload: ResetPasswordPayload) =>
+  apiRequest<null>(
+    '/auth/reset-password',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
   );
