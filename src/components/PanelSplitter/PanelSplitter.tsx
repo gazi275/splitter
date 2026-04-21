@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { Panel } from '../Panel';
 import { usePanelTree } from '../../hooks/usePanelTree';
 import { generateNodeId, getRandomColor } from '../../utils/colorUtils';
+import { normalizePanelTree } from '../../utils/treeUtils';
 import { rootStyle } from '../../styles/componentStyles';
 import { PanelNode } from '../../types/panel';
 
@@ -31,7 +32,7 @@ export const PanelSplitter: React.FC<PanelSplitterProps> = ({
 
   useEffect(() => {
     if (initialLayout) {
-      setRoot(initialLayout);
+      setRoot(normalizePanelTree(initialLayout));
     }
   }, [initialLayout, setRoot]);
 

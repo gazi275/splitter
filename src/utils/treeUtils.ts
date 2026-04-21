@@ -46,3 +46,25 @@ export const getMaxNodeId = (node: PanelNode): number => {
   const rightMax = getMaxNodeId(node.children[1]);
   return Math.max(node.id, leftMax, rightMax);
 };
+
+/**
+ * Normalizes a panel tree to keep split percentages in a safe, visible range.
+ */
+export const normalizePanelTree = (node: PanelNode, minSize = 20): PanelNode => {
+  if (node.type === 'leaf') return node;
+
+  const [rawLeft, rawRight] = node.sizes;
+  const total = rawLeft + rawRight || 100;
+  const leftPct = (rawLeft / total) * 100;
+  const clampedLeft = Math.max(minSize, Math.min(100 - minSize, leftPct));
+  const clampedRight = 100 - clampedLeft;
+
+  return {
+    ...node,
+    sizes: [clampedLeft, clampedRight],
+    children: [
+      normalizePanelTree(node.children[0], minSize),
+      normalizePanelTree(node.children[1], minSize),
+    ],
+  };
+};
